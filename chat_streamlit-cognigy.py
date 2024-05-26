@@ -158,7 +158,7 @@ def get_response(query, model_selection_user, detected_language):
     prompt = ChatPromptTemplate.from_template(template)
 
     # Retrieve the documents using similarity search. 
-    retrieved_docs = pinecone.similarity_search(query, k=8)  # Adjust k as needed which not something I can change when using retriever.invoke(query). I can put in k=5 but I will only get 4 which is the default
+    retrieved_docs = pinecone.similarity_search(query, k=12)  # Adjust k as needed which not something I can change when using retriever.invoke(query). I can put in k=5 but I will only get 4 which is the default
 
     # # Retrieve the documents using Maximal Marginal Relevance Searches (mmr). I notice that when I use the one that defines search_type="mmr", I get very poor retrieval results compared to without it or similarity search
     # #retriever = pinecone.as_retriever(search_type="mmr") # do not use. Terrible
