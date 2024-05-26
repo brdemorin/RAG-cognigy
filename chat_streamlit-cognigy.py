@@ -18,6 +18,9 @@ import tiktoken
 from langchain import globals as langchain_globals
 langchain_globals.set_verbose(True)
 from langchain_groq import ChatGroq
+import json
+from google.oauth2 import service_account
+
 
 # if using secrets in .env in root folder:
 # load_dotenv()
@@ -33,8 +36,14 @@ OPENAI_API_KEY = st.secrets["secrets"]["OPENAI_API_KEY"]
 GROQ_API_KEY = st.secrets["secrets"]["GROQ_API_KEY"]
 PINECONE_API_KEY = st.secrets["secrets"]["PINECONE_API_KEY"]
 PINECONE_API_ENV = st.secrets["secrets"]["PINECONE_API_ENV"]
+
+# google service cloud API for translation fixed by gemini 1.5 pro
 GOOGLE_APPLICATION_CREDENTIALS = st.secrets["secrets"]["GOOGLE_APPLICATION_CREDENTIALS"]
-# Now set SOME of the secrets from secrets.toml as environment variables. It doesn't appear openAI needs this but I did it anyhow. If I try to do this for google, google will stop working
+credentials_info = json.loads(GOOGLE_APPLICATION_CREDENTIALS) 
+credentials = service_account.Credentials.from_service_account_info(credentials_info)
+translate_client = translate.Client(credentials=credentials)
+
+# Now set as environment variables. It doesn't appear openAI needs this but I did it anyhow. \
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
@@ -42,12 +51,18 @@ os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
 os.environ["PINECONE_ENVIRONMENT"] = PINECONE_API_ENV 
 
 
+
+
+
+
+
+
+
 # I get faster and shorter responses API'ing into GROQ and using the llama3 70b model vs openAI GPT 3.5 Turbo and price is about same ... but sacrifice a decent amount of context window. I change to GPT3.5 when retrieval is more than Groq can handle for a given question
 model = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model="gpt-3.5-turbo")
 #model = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model="gpt-4o") # or gpt-4o-2024-05-13
 # response = model.invoke("This is a test. Simply respond with, 'GPT initialized'")
 # print(response)
-
 
 
 # pip install langchain-groq (I added to requirements.txt for future) # langchain documentation for groq: https://python.langchain.com/v0.1/docs/integrations/chat/groq/
@@ -69,8 +84,9 @@ def is_english(raw_query):
             return False
     except:
         return False
+    
 def get_translation(text, detected_language = None):
-    translate_client = translate.Client()
+    #translate_client = translate.Client() # commented out since new script defines in the beginning and makes global
     result = translate_client.detect_language(text)
     # this is path for incoming question from human to detect language and translate to English if not English
     if not detected_language:
@@ -142,7 +158,7 @@ def get_response(query, model_selection_user, detected_language):
     prompt = ChatPromptTemplate.from_template(template)
 
     # Retrieve the documents using similarity search. 
-    retrieved_docs = pinecone.similarity_search(query, k=12)  # Adjust k as needed which not something I can change when using retriever.invoke(query). I can put in k=5 but I will only get 4 which is the default
+    retrieved_docs = pinecone.similarity_search(query, k=8)  # Adjust k as needed which not something I can change when using retriever.invoke(query). I can put in k=5 but I will only get 4 which is the default
 
     # # Retrieve the documents using Maximal Marginal Relevance Searches (mmr). I notice that when I use the one that defines search_type="mmr", I get very poor retrieval results compared to without it or similarity search
     # #retriever = pinecone.as_retriever(search_type="mmr") # do not use. Terrible
@@ -338,7 +354,7 @@ def main():
                 unique_urls, unique_titles = sources_to_print(retrieved_docs)
                 #st.write(result)
 
-                url_list = "\n".join(unique_urls)
+                url_list = "\n".join(f"{url}" for url in unique_urls)
                 title_list = "\n".join(f"- {title}" for title in unique_titles)  # Using bullet points for clarity
 
                 if detected_language == "en":
