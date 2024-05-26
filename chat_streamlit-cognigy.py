@@ -20,6 +20,7 @@ langchain_globals.set_verbose(True)
 from langchain_groq import ChatGroq
 import json
 from google.oauth2 import service_account
+import requests
 
 
 # if using secrets in .env in root folder:
@@ -393,8 +394,12 @@ def main():
                 if selected_model == "model2":
                     st.sidebar.caption(f"**Last model invoked:**\n\nLlama3 70b 🧠")
 
-
-
+                def send_to_flask(query, result):
+                    webhook_url = "https://up-poodle-resolved.ngrok-free.app/cognigy"
+                    data = {"query": query, "result": result}
+                    response = requests.post(webhook_url, json=data)
+                    print(response.text)
+                send_to_flask(query, result)
 
 
                 # st.sidebar.write("**Session Cost:**")
